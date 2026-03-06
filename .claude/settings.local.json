@@ -25,7 +25,10 @@
       "Bash(git init)",
       "Bash(git config --global --add safe.directory 'C:/Users/gk100/Ictus Flow Automation/ictus-flow-system')",
       "Bash(git add config/clients/)",
-      "Bash(git add .)"
+      "Bash(git add .)",
+      "Bash(git commit:*)",
+      "Bash(git push -u origin master)",
+      "Bash(git add .claude/settings.local.json)"
     ]
   }
 }

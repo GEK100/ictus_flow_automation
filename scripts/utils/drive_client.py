@@ -3,6 +3,9 @@
 SEC-02: All folder-based operations accept an optional client_code parameter.
 When provided, the folder is validated against the client's config before the
 Drive API call. This prevents cross-client data leakage.
+
+Audit: When client_code is provided, every upload/download/move/delete is
+logged to logs/audit.csv via audit_logger.log_access().
 """
 
 import os
@@ -40,6 +43,13 @@ def _guard(client_code, folder_id):
         validate_client_operation(client_code, folder_id)
 
 
+def _audit(client_code, file_id, file_name, action):
+    """Log a Drive operation to the audit trail. No-op if client_code is None."""
+    if client_code:
+        from scripts.utils.audit_logger import log_access
+        log_access(client_code, file_id, file_name, action, 'drive_client')
+
+
 # ── Read operations ────────────────────────────────────────────────
 
 
@@ -71,7 +81,7 @@ def list_files(folder_id, mime_type=None, client_code=None):
     return results
 
 
-def download_file(file_id, destination_path):
+def download_file(file_id, destination_path, client_code=None):
     """Download a file from Drive to a local path. Returns the path."""
     service = _get_service()
     request = service.files().get_media(fileId=file_id)
@@ -81,10 +91,11 @@ def download_file(file_id, destination_path):
         done = False
         while not done:
             _, done = downloader.next_chunk()
+    _audit(client_code, file_id, os.path.basename(destination_path), 'READ')
     return destination_path
 
 
-def download_file_bytes(file_id):
+def download_file_bytes(file_id, client_code=None):
     """Download a file from Drive and return bytes."""
     service = _get_service()
     request = service.files().get_media(fileId=file_id)
@@ -94,13 +105,16 @@ def download_file_bytes(file_id):
     while not done:
         _, done = downloader.next_chunk()
     buffer.seek(0)
+    _audit(client_code, file_id, file_id, 'READ')
     return buffer.read()
 
 
-def export_file(file_id, mime_type='text/plain'):
+def export_file(file_id, mime_type='text/plain', client_code=None):
     """Export a Google Docs/Sheets/Slides file. Returns bytes."""
     service = _get_service()
-    return service.files().export(fileId=file_id, mimeType=mime_type).execute()
+    result = service.files().export(fileId=file_id, mimeType=mime_type).execute()
+    _audit(client_code, file_id, file_id, 'READ')
+    return result
 
 
 def find_file_by_name(folder_id, filename, client_code=None):
@@ -122,6 +136,7 @@ def download_json(folder_id, filename, client_code=None):
     if not existing:
         return None
     content = download_file_bytes(existing['id'])
+    _audit(client_code, existing['id'], filename, 'READ')
     return json.loads(content.decode('utf-8'))
 
 
@@ -149,6 +164,7 @@ def upload_file(local_path, folder_id, filename=None, mime_type=None, client_cod
     result = service.files().create(
         body=file_metadata, media_body=media, fields='id'
     ).execute()
+    _audit(client_code, result['id'], filename, 'WRITE')
     return result['id']
 
 
@@ -164,23 +180,26 @@ def upload_bytes(content, folder_id, filename, mime_type='application/json', cli
     result = service.files().create(
         body=file_metadata, media_body=media, fields='id'
     ).execute()
+    _audit(client_code, result['id'], filename, 'WRITE')
     return result['id']
 
 
-def update_file(file_id, local_path, mime_type=None):
+def update_file(file_id, local_path, mime_type=None, client_code=None):
     """Update an existing file's content on Drive."""
     service = _get_service()
     media = MediaFileUpload(local_path, mimetype=mime_type, resumable=True)
     service.files().update(fileId=file_id, media_body=media).execute()
+    _audit(client_code, file_id, os.path.basename(local_path), 'WRITE')
 
 
-def update_file_bytes(file_id, content, mime_type='application/json'):
+def update_file_bytes(file_id, content, mime_type='application/json', client_code=None):
     """Update an existing file's content with bytes/string."""
     service = _get_service()
     if isinstance(content, str):
         content = content.encode('utf-8')
     media = MediaInMemoryUpload(content, mimetype=mime_type, resumable=True)
     service.files().update(fileId=file_id, media_body=media).execute()
+    _audit(client_code, file_id, file_id, 'WRITE')
 
 
 def move_file(file_id, from_folder_id, to_folder_id, client_code=None):
@@ -194,6 +213,7 @@ def move_file(file_id, from_folder_id, to_folder_id, client_code=None):
         addParents=to_folder_id,
         removeParents=from_folder_id,
     ).execute()
+    _audit(client_code, file_id, file_id, 'MOVE')
 
 
 def create_folder(name, parent_folder_id=None, client_code=None):
@@ -206,6 +226,7 @@ def create_folder(name, parent_folder_id=None, client_code=None):
     if parent_folder_id:
         metadata['parents'] = [parent_folder_id]
     result = service.files().create(body=metadata, fields='id').execute()
+    _audit(client_code, result['id'], name, 'WRITE')
     return result['id']
 
 
@@ -226,5 +247,8 @@ def upload_or_update_json(folder_id, filename, data, client_code=None):
     existing = find_file_by_name(folder_id, filename)
     if existing:
         update_file_bytes(existing['id'], content)
+        _audit(client_code, existing['id'], filename, 'WRITE')
         return existing['id']
-    return upload_bytes(content, folder_id, filename)
+    file_id = upload_bytes(content, folder_id, filename)
+    _audit(client_code, file_id, filename, 'WRITE')
+    return file_id

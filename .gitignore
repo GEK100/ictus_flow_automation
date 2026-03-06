@@ -15,8 +15,9 @@ __pycache__/
 config/clients/*.json
 !config/clients/_template.json
 
-# Logs (security violations, runtime logs)
+# Logs (security violations, runtime logs, audit trail)
 logs/*.log
+logs/*.csv
 
 # Test outputs
 tests/ocr-preprocessor/_output/

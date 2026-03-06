@@ -299,8 +299,14 @@ def run_auto_diff(client_code, file_id):
     validate_client_operation(client_code, completed_folder)
 
     # Download both versions
-    import tempfile
-    with tempfile.TemporaryDirectory() as tmpdir:
+    import shutil as _shutil
+    import uuid as _uuid
+    tmpdir = os.path.join(
+        os.environ.get('TEMP', '/tmp'), 'ictus-flow-processing',
+        f'correction-diff-{_uuid.uuid4().hex[:8]}',
+    )
+    os.makedirs(tmpdir, exist_ok=True)
+    try:
         # The file_id should be the completed version
         completed_path = os.path.join(tmpdir, f'completed_{file_name}')
         drive_client.download_file(file_id, completed_path)
@@ -334,6 +340,8 @@ def run_auto_diff(client_code, file_id):
                 log.info("No changes detected — no corrections to log")
                 return []
             changes_desc = diff_result
+    finally:
+        _shutil.rmtree(tmpdir, ignore_errors=True)
 
     # Determine workflow from tracking sheet
     workflow_name = _get_workflow_from_sheet(client_code, file_name)

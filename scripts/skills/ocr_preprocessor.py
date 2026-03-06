@@ -14,7 +14,8 @@ Usage:
 import os
 import sys
 import argparse
-import tempfile
+import shutil
+import uuid
 import logging
 from pathlib import Path
 
@@ -282,7 +283,12 @@ def process_pdf_file(filepath, output_dir=None):
     stem = Path(filepath).stem
     enhanced_pdf_path = output_dir / f"{stem}_enhanced.pdf"
 
-    with tempfile.TemporaryDirectory() as tmpdir:
+    tmpdir = os.path.join(
+        os.environ.get('TEMP', '/tmp'), 'ictus-flow-processing',
+        f'ocr-pdf-{uuid.uuid4().hex[:8]}',
+    )
+    os.makedirs(tmpdir, exist_ok=True)
+    try:
         page_pdfs = []
         for i, (enhanced, text) in enumerate(zip(enhanced_images, all_text)):
             # Save enhanced image as temporary file
@@ -307,6 +313,8 @@ def process_pdf_file(filepath, output_dir=None):
             merger.append(pdf_path)
         merger.write(str(enhanced_pdf_path))
         merger.close()
+    finally:
+        shutil.rmtree(tmpdir, ignore_errors=True)
 
     log.info(f"Enhanced PDF saved: {enhanced_pdf_path}")
     log.info(f"Total OCR text: {len(full_text)} characters")

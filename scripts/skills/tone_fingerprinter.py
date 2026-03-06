@@ -11,7 +11,8 @@ import os
 import sys
 import json
 import argparse
-import tempfile
+import shutil
+import uuid
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -178,7 +179,12 @@ def run_tone_fingerprinter(client_code):
     log.info(f"Found {len(files)} files for tone analysis")
 
     analyses = []
-    with tempfile.TemporaryDirectory() as tmpdir:
+    tmpdir = os.path.join(
+        os.environ.get('TEMP', '/tmp'), 'ictus-flow-processing',
+        f'tone-fingerprinter-{uuid.uuid4().hex[:8]}',
+    )
+    os.makedirs(tmpdir, exist_ok=True)
+    try:
         for f in files:
             log.info(f"Analysing: {f['name']}")
             local_path = os.path.join(tmpdir, f['name'])
@@ -191,6 +197,8 @@ def run_tone_fingerprinter(client_code):
                              f"Voice: {analysis.get('voice')}")
             except Exception as e:
                 log.warning(f"  Failed to analyse {f['name']}: {e}")
+    finally:
+        shutil.rmtree(tmpdir, ignore_errors=True)
 
     if not analyses:
         log.error("No documents could be analysed for tone")

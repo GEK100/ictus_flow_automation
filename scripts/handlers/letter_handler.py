@@ -5,6 +5,8 @@ Routes classified correspondence through drafting and formatting.
 
 import os
 import sys
+import shutil
+import uuid
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -31,5 +33,14 @@ def process(file_path, client_config):
         if folder_id:
             validate_client_operation(client_code, folder_id)
 
-    # TODO: Implement letter drafting pipeline
-    pass
+    # Dedicated temp directory for local processing
+    tmpdir = os.path.join(
+        os.environ.get('TEMP', '/tmp'), 'ictus-flow-processing',
+        f'letter-{uuid.uuid4().hex[:8]}',
+    )
+    os.makedirs(tmpdir, exist_ok=True)
+    try:
+        # TODO: Implement letter drafting pipeline
+        pass
+    finally:
+        shutil.rmtree(tmpdir, ignore_errors=True)

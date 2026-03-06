@@ -14,7 +14,8 @@ import os
 import sys
 import json
 import argparse
-import tempfile
+import shutil
+import uuid
 import logging
 from pathlib import Path
 
@@ -97,98 +98,101 @@ def classify_file(
     if file_id and not local_path:
         meta = drive_client.get_file_metadata(file_id)
         filename = filename or meta['name']
-        tmpdir = tempfile.mkdtemp()
+        tmpdir = os.path.join(
+            os.environ.get('TEMP', '/tmp'), 'ictus-flow-processing',
+            f'classifier-{uuid.uuid4().hex[:8]}',
+        )
+        os.makedirs(tmpdir, exist_ok=True)
         local_path = os.path.join(tmpdir, filename)
         drive_client.download_file(file_id, local_path)
     elif local_path:
         filename = filename or os.path.basename(local_path)
 
-    # Load base classifier prompt
-    base_prompt = load_base_prompt('classifier.txt')
+    try:
+        # Load base classifier prompt
+        base_prompt = load_base_prompt('classifier.txt')
 
-    # Load client corrections for classification
-    corrections = load_classification_corrections(client_code)
-    system_prompt = build_classifier_prompt(base_prompt, corrections)
+        # Load client corrections for classification
+        corrections = load_classification_corrections(client_code)
+        system_prompt = build_classifier_prompt(base_prompt, corrections)
 
-    # Get file content for classification
-    if content_text:
-        file_content = content_text
-    else:
-        file_content = _extract_text_content(local_path)
+        # Get file content for classification
+        if content_text:
+            file_content = content_text
+        else:
+            file_content = _extract_text_content(local_path)
 
-    # First classification attempt
-    result = _run_classification(
-        system_prompt, filename, file_content, local_path, client_code,
-    )
-    ocr_applied = False
+        # First classification attempt
+        result = _run_classification(
+            system_prompt, filename, file_content, local_path, client_code,
+        )
+        ocr_applied = False
 
-    # Check confidence against thresholds
-    confidence = result.get('confidence', 0)
+        # Check confidence against thresholds
+        confidence = result.get('confidence', 0)
 
-    if confidence < thresholds['spot_check']:
-        # Low confidence — check if OCR can help
-        if local_path and (is_image_file(local_path) or
-                           (is_pdf_file(local_path) and not is_text_searchable_pdf(local_path))):
-            log.info(f"Low confidence ({confidence:.2f}), triggering OCR pre-processor")
-            ocr_result = ocr_process(local_path)
+        if confidence < thresholds['spot_check']:
+            # Low confidence — check if OCR can help
+            if local_path and (is_image_file(local_path) or
+                               (is_pdf_file(local_path) and not is_text_searchable_pdf(local_path))):
+                log.info(f"Low confidence ({confidence:.2f}), triggering OCR pre-processor")
+                ocr_result = ocr_process(local_path)
 
-            if ocr_result['ocr_applied'] and ocr_result['text']:
-                # Re-classify with OCR text
-                result = _run_classification(
-                    system_prompt, filename, ocr_result['text'],
-                    ocr_result['enhanced_path'], client_code,
+                if ocr_result['ocr_applied'] and ocr_result['text']:
+                    # Re-classify with OCR text
+                    result = _run_classification(
+                        system_prompt, filename, ocr_result['text'],
+                        ocr_result['enhanced_path'], client_code,
+                    )
+                    confidence = result.get('confidence', 0)
+                    ocr_applied = True
+                    log.info(f"Post-OCR confidence: {confidence:.2f}")
+
+        # Determine status
+        if confidence >= thresholds['auto_route']:
+            status = 'NEW'
+        elif confidence >= thresholds['spot_check']:
+            status = 'SPOT_CHECK'
+        else:
+            status = 'NEEDS_CLASSIFICATION'
+
+        result['status'] = status
+        result['ocr_applied'] = ocr_applied
+
+        # Map classification to workflow
+        classification = result.get('classification', 'OTHER')
+        class_map = rules.get('classification_map', {})
+        if classification in class_map and class_map[classification].get('handler'):
+            result['suggested_workflow'] = class_map[classification]['handler']
+        elif 'suggested_workflow' not in result:
+            result['suggested_workflow'] = None
+
+        # Log to tracking sheet
+        if config and config.get('tracking_sheet_id'):
+            try:
+                from datetime import datetime
+                sheets_client.append_row(
+                    config['tracking_sheet_id'],
+                    [
+                        filename,
+                        datetime.now().strftime('%Y-%m-%d %H:%M'),
+                        classification,
+                        f"{confidence:.2f}",
+                        status,
+                        result.get('suggested_workflow', ''),
+                        '',  # QA Score
+                        '',  # QA Status
+                        f"OCR: {ocr_applied}" if ocr_applied else '',
+                        '',  # Completed Date
+                    ],
                 )
-                confidence = result.get('confidence', 0)
-                ocr_applied = True
-                log.info(f"Post-OCR confidence: {confidence:.2f}")
+            except Exception as e:
+                log.warning(f"Could not update tracking sheet: {e}")
 
-    # Determine status
-    if confidence >= thresholds['auto_route']:
-        status = 'NEW'
-    elif confidence >= thresholds['spot_check']:
-        status = 'SPOT_CHECK'
-    else:
-        status = 'NEEDS_CLASSIFICATION'
-
-    result['status'] = status
-    result['ocr_applied'] = ocr_applied
-
-    # Map classification to workflow
-    classification = result.get('classification', 'OTHER')
-    class_map = rules.get('classification_map', {})
-    if classification in class_map and class_map[classification].get('handler'):
-        result['suggested_workflow'] = class_map[classification]['handler']
-    elif 'suggested_workflow' not in result:
-        result['suggested_workflow'] = None
-
-    # Log to tracking sheet
-    if config and config.get('tracking_sheet_id'):
-        try:
-            from datetime import datetime
-            sheets_client.append_row(
-                config['tracking_sheet_id'],
-                [
-                    filename,
-                    datetime.now().strftime('%Y-%m-%d %H:%M'),
-                    classification,
-                    f"{confidence:.2f}",
-                    status,
-                    result.get('suggested_workflow', ''),
-                    '',  # QA Score
-                    '',  # QA Status
-                    f"OCR: {ocr_applied}" if ocr_applied else '',
-                    '',  # Completed Date
-                ],
-            )
-        except Exception as e:
-            log.warning(f"Could not update tracking sheet: {e}")
-
-    # Cleanup temp dir
-    if tmpdir:
-        import shutil
-        shutil.rmtree(tmpdir, ignore_errors=True)
-
-    return result
+        return result
+    finally:
+        if tmpdir:
+            shutil.rmtree(tmpdir, ignore_errors=True)
 
 
 def _run_classification(system_prompt, filename, content, filepath, client_code):

@@ -16,9 +16,14 @@
 #
 # At £295/month tier: 98%+ gross margin on API costs
 
-import csv, sys
+import csv, sys, os
 from datetime import datetime
 from collections import defaultdict
+from pathlib import Path
+
+# Use the same CSV location as cost_logger.py
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+COST_CSV = PROJECT_ROOT / 'logs' / 'api_costs.csv'
 
 # Default to current month if not specified
 if len(sys.argv) > 1:
@@ -39,9 +44,12 @@ data = defaultdict(lambda: {
 })
 
 try:
-    with open('api_cost_log.csv') as f:
+    with open(COST_CSV) as f:
         reader = csv.reader(f)
+        header = next(reader, None)  # skip header row
         for row in reader:
+            if len(row) < 7:
+                continue
             timestamp, client, workflow, model, \
                 inp, out, cost = row
             if not timestamp.startswith(target_month):
@@ -56,7 +64,7 @@ try:
             entry['total_calls'] += 1
             entry['total_cost'] += float(cost)
 except FileNotFoundError:
-    print("No api_cost_log.csv found. "
+    print(f"No {COST_CSV} found. "
           "Run some workflows first.")
     sys.exit(1)
 

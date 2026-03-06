@@ -1,6 +1,12 @@
 """Anthropic Claude API wrapper for Ictus Flow.
 
-Provides model selection by tier and cost tracking.
+Provides model selection by tier and automatic cost tracking.
+
+OPS-02: Every API call made through send_message() / send_message_json()
+is automatically logged to logs/api_costs.csv via cost_logger.log_api_call().
+The credit_monitor module reads this CSV to enforce budget limits.
+Token counts come from the Anthropic response object (usage.input_tokens,
+usage.output_tokens) — these are actual values, not estimates.
 """
 
 import os

@@ -25,6 +25,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from scripts.utils import claude_client, drive_client
 from scripts.utils.prompt_builder import load_base_prompt, load_client_config
+from scripts.utils.client_guard import validate_client_operation
 
 
 BRAND_EXTRACTION_PROMPT = None
@@ -192,6 +193,10 @@ def run_brand_profiler(client_code):
     if not learning_folder:
         log.error("No learning folder configured")
         return None
+
+    # SEC-02: Validate client boundary
+    validate_client_operation(client_code, brand_assets_folder)
+    validate_client_operation(client_code, learning_folder)
 
     # Download files from brand assets folder
     files = drive_client.list_files(brand_assets_folder)

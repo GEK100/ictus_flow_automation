@@ -26,6 +26,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from scripts.utils import claude_client, drive_client
 from scripts.utils.prompt_builder import load_base_prompt, load_client_config
+from scripts.utils.client_guard import validate_client_operation
 
 
 FORMAT_ANALYSIS_PROMPT = None
@@ -422,6 +423,9 @@ def get_format_spec(client_code, output_type):
     if not learning_folder:
         return None
 
+    # SEC-02: Validate client boundary
+    validate_client_operation(client_code, learning_folder)
+
     formats_data = drive_client.download_json(learning_folder, 'output-formats.json')
     if not formats_data:
         return None
@@ -448,6 +452,10 @@ def run_output_format_matcher(client_code):
     if not learning_folder:
         log.error("No learning folder configured")
         return None
+
+    # SEC-02: Validate client boundary
+    validate_client_operation(client_code, templates_folder)
+    validate_client_operation(client_code, learning_folder)
 
     # Download files from templates folder
     files = drive_client.list_files(templates_folder)

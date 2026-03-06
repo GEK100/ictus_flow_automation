@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from utils.cost_logger import log_api_call
+from scripts.utils.client_guard import validate_client_operation
 
 load_dotenv(r"C:\Users\gk100\Ictus Flow Automation Secrets\.env")
 anthropic = Anthropic()
@@ -17,6 +18,13 @@ with open('prompts/invoice-processor.txt') as f:
 
 def process_invoice(file_path, client_config):
     """Process a single invoice file."""
+
+    # SEC-02: Validate client boundary before processing
+    client_code = client_config.get('client_code', 'UNKNOWN')
+    for folder_key in ('inbox', 'processing', 'completed'):
+        folder_id = client_config.get('folders', {}).get(folder_key)
+        if folder_id:
+            validate_client_operation(client_code, folder_id)
 
     # Read file (handle PDF, image, etc)
     with open(file_path, 'rb') as f:

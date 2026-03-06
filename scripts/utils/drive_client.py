@@ -1,4 +1,9 @@
-"""Google Drive API wrapper for Ictus Flow."""
+"""Google Drive API wrapper for Ictus Flow.
+
+SEC-02: All folder-based operations accept an optional client_code parameter.
+When provided, the folder is validated against the client's config before the
+Drive API call. This prevents cross-client data leakage.
+"""
 
 import os
 import io
@@ -28,11 +33,23 @@ def _get_service():
     return _service
 
 
-def list_files(folder_id, mime_type=None):
+def _guard(client_code, folder_id):
+    """Validate folder belongs to client. No-op if client_code is None."""
+    if client_code and folder_id:
+        from scripts.utils.client_guard import validate_client_operation
+        validate_client_operation(client_code, folder_id)
+
+
+# ── Read operations ────────────────────────────────────────────────
+
+
+def list_files(folder_id, mime_type=None, client_code=None):
     """List files in a Drive folder.
 
     Returns list of dicts with id, name, mimeType, modifiedTime, size.
     """
+    _guard(client_code, folder_id)
+
     service = _get_service()
     query = f"'{folder_id}' in parents and trashed = false"
     if mime_type:
@@ -86,8 +103,44 @@ def export_file(file_id, mime_type='text/plain'):
     return service.files().export(fileId=file_id, mimeType=mime_type).execute()
 
 
-def upload_file(local_path, folder_id, filename=None, mime_type=None):
+def find_file_by_name(folder_id, filename, client_code=None):
+    """Find a file by name in a folder. Returns file dict or None."""
+    _guard(client_code, folder_id)
+
+    service = _get_service()
+    query = f"'{folder_id}' in parents and name = '{filename}' and trashed = false"
+    resp = service.files().list(q=query, fields='files(id, name)').execute()
+    files = resp.get('files', [])
+    return files[0] if files else None
+
+
+def download_json(folder_id, filename, client_code=None):
+    """Download and parse a JSON file from a folder. Returns dict or None."""
+    _guard(client_code, folder_id)
+
+    existing = find_file_by_name(folder_id, filename)
+    if not existing:
+        return None
+    content = download_file_bytes(existing['id'])
+    return json.loads(content.decode('utf-8'))
+
+
+def get_file_metadata(file_id):
+    """Get metadata for a file."""
+    service = _get_service()
+    return service.files().get(
+        fileId=file_id,
+        fields='id, name, mimeType, modifiedTime, size, parents',
+    ).execute()
+
+
+# ── Write operations ───────────────────────────────────────────────
+
+
+def upload_file(local_path, folder_id, filename=None, mime_type=None, client_code=None):
     """Upload a local file to a Drive folder. Returns the file ID."""
+    _guard(client_code, folder_id)
+
     service = _get_service()
     if filename is None:
         filename = os.path.basename(local_path)
@@ -99,8 +152,10 @@ def upload_file(local_path, folder_id, filename=None, mime_type=None):
     return result['id']
 
 
-def upload_bytes(content, folder_id, filename, mime_type='application/json'):
+def upload_bytes(content, folder_id, filename, mime_type='application/json', client_code=None):
     """Upload bytes/string content to a Drive folder. Returns file ID."""
+    _guard(client_code, folder_id)
+
     service = _get_service()
     if isinstance(content, str):
         content = content.encode('utf-8')
@@ -128,8 +183,11 @@ def update_file_bytes(file_id, content, mime_type='application/json'):
     service.files().update(fileId=file_id, media_body=media).execute()
 
 
-def move_file(file_id, from_folder_id, to_folder_id):
+def move_file(file_id, from_folder_id, to_folder_id, client_code=None):
     """Move a file between folders."""
+    _guard(client_code, from_folder_id)
+    _guard(client_code, to_folder_id)
+
     service = _get_service()
     service.files().update(
         fileId=file_id,
@@ -138,8 +196,11 @@ def move_file(file_id, from_folder_id, to_folder_id):
     ).execute()
 
 
-def create_folder(name, parent_folder_id=None):
+def create_folder(name, parent_folder_id=None, client_code=None):
     """Create a folder on Drive. Returns the folder ID."""
+    if parent_folder_id:
+        _guard(client_code, parent_folder_id)
+
     service = _get_service()
     metadata = {'name': name, 'mimeType': 'application/vnd.google-apps.folder'}
     if parent_folder_id:
@@ -157,38 +218,13 @@ def share_folder(folder_id, email, role='writer'):
     ).execute()
 
 
-def get_file_metadata(file_id):
-    """Get metadata for a file."""
-    service = _get_service()
-    return service.files().get(
-        fileId=file_id,
-        fields='id, name, mimeType, modifiedTime, size, parents',
-    ).execute()
-
-
-def find_file_by_name(folder_id, filename):
-    """Find a file by name in a folder. Returns file dict or None."""
-    service = _get_service()
-    query = f"'{folder_id}' in parents and name = '{filename}' and trashed = false"
-    resp = service.files().list(q=query, fields='files(id, name)').execute()
-    files = resp.get('files', [])
-    return files[0] if files else None
-
-
-def upload_or_update_json(folder_id, filename, data):
+def upload_or_update_json(folder_id, filename, data, client_code=None):
     """Upload JSON to Drive, updating if it already exists. Returns file ID."""
+    _guard(client_code, folder_id)
+
     content = json.dumps(data, indent=2)
     existing = find_file_by_name(folder_id, filename)
     if existing:
         update_file_bytes(existing['id'], content)
         return existing['id']
     return upload_bytes(content, folder_id, filename)
-
-
-def download_json(folder_id, filename):
-    """Download and parse a JSON file from a folder. Returns dict or None."""
-    existing = find_file_by_name(folder_id, filename)
-    if not existing:
-        return None
-    content = download_file_bytes(existing['id'])
-    return json.loads(content.decode('utf-8'))

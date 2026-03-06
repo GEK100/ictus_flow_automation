@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from utils.cost_logger import log_api_call
+from scripts.utils.client_guard import validate_client_operation
 
 load_dotenv(r"C:\Users\gk100\Ictus Flow Automation Secrets\.env")
 anthropic = Anthropic()
@@ -92,8 +93,14 @@ def move_file(file_id, from_folder, to_folder):
 # Main loop
 while True:
     for client in clients:
+        client_code = client.get('client_code', 'UNKNOWN')
         inbox_id = client['folders']['inbox']
         processing_id = client['folders']['processing']
+
+        # SEC-02: Validate client boundary before processing
+        validate_client_operation(client_code, inbox_id)
+        validate_client_operation(client_code, processing_id)
+
         new_files = get_new_files(inbox_id)
 
         for file in new_files:

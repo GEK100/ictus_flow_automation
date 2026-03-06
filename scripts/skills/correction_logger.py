@@ -33,6 +33,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from scripts.utils import claude_client, drive_client, sheets_client
 from scripts.utils.prompt_builder import load_base_prompt, load_client_config
+from scripts.utils.client_guard import validate_client_operation
 
 # Tracking sheet column indices (from sheets_client.TRACKING_HEADERS)
 COL_FILE_NAME = 0
@@ -68,6 +69,8 @@ def load_corrections(client_code):
     learning_folder = config.get('folders', {}).get('learning')
     if not learning_folder:
         return {'corrections': []}
+    # SEC-02: Validate client boundary
+    validate_client_operation(client_code, learning_folder)
     data = drive_client.download_json(learning_folder, 'corrections.json')
     return data if data else {'corrections': []}
 
@@ -80,6 +83,8 @@ def save_corrections(client_code, corrections_data):
     learning_folder = config.get('folders', {}).get('learning')
     if not learning_folder:
         return
+    # SEC-02: Validate client boundary
+    validate_client_operation(client_code, learning_folder)
     drive_client.upload_or_update_json(
         learning_folder, 'corrections.json', corrections_data
     )
@@ -288,6 +293,10 @@ def run_auto_diff(client_code, file_id):
     if not processing_folder or not completed_folder:
         log.error("Missing processing or completed folder in config")
         return []
+
+    # SEC-02: Validate client boundary
+    validate_client_operation(client_code, processing_folder)
+    validate_client_operation(client_code, completed_folder)
 
     # Download both versions
     import tempfile

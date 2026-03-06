@@ -28,6 +28,7 @@ from scripts.utils.prompt_builder import (
     load_base_prompt, load_client_config,
     load_brand_profile, load_tone_profile,
 )
+from scripts.utils.client_guard import validate_client_operation
 
 # Tracking sheet column indices
 COL_QA_SCORE = 6
@@ -78,6 +79,8 @@ def load_client_corrections(client_code):
     learning_folder = config.get('folders', {}).get('learning')
     if not learning_folder:
         return []
+    # SEC-02: Validate client boundary
+    validate_client_operation(client_code, learning_folder)
     data = drive_client.download_json(learning_folder, 'corrections.json')
     return data.get('corrections', []) if data else []
 
@@ -90,6 +93,8 @@ def load_qa_stats(client_code):
     learning_folder = config.get('folders', {}).get('learning')
     if not learning_folder:
         return {'workflows': {}}
+    # SEC-02: Validate client boundary
+    validate_client_operation(client_code, learning_folder)
     data = drive_client.download_json(learning_folder, 'qa-stats.json')
     return data if data else {'workflows': {}}
 
@@ -102,6 +107,8 @@ def save_qa_stats(client_code, stats):
     learning_folder = config.get('folders', {}).get('learning')
     if not learning_folder:
         return
+    # SEC-02: Validate client boundary
+    validate_client_operation(client_code, learning_folder)
     drive_client.upload_or_update_json(learning_folder, 'qa-stats.json', stats)
 
 

@@ -12,7 +12,8 @@
     "archive": "DRIVE_FOLDER_ID",
     "brand_assets": "DRIVE_FOLDER_ID",
     "templates": "DRIVE_FOLDER_ID",
-    "learning": "DRIVE_FOLDER_ID"
+    "learning": "DRIVE_FOLDER_ID",
+    "failed": "DRIVE_FOLDER_ID"
   },
   "active_workflows": ["invoice_processing"],
   "tracking_sheet_id": "GOOGLE_SHEET_ID",

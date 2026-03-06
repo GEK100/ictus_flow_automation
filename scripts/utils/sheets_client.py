@@ -101,3 +101,52 @@ TRACKING_HEADERS = [
     'File Name', 'Date Received', 'Classification', 'Confidence',
     'Status', 'Workflow', 'QA Score', 'QA Status', 'Notes', 'Completed Date',
 ]
+
+
+def add_failed_row_formatting(sheet_id, sheet_name='Tracking'):
+    """Add conditional formatting: rows where Status (col E) = 'FAILED' get red background.
+
+    Uses the Sheets batchUpdate API to add a conditional format rule that
+    highlights the entire row with a light-red background and bold text
+    whenever the Status column contains 'FAILED'.
+    """
+    service = _get_service()
+
+    # Get the sheet's internal numeric ID (different from spreadsheet ID)
+    meta = service.spreadsheets().get(
+        spreadsheetId=sheet_id, fields='sheets.properties'
+    ).execute()
+    sheet_gid = meta['sheets'][0]['properties']['sheetId']
+
+    rule = {
+        'addConditionalFormatRule': {
+            'rule': {
+                'ranges': [{
+                    'sheetId': sheet_gid,
+                    'startRowIndex': 1,       # skip header row
+                    'startColumnIndex': 0,
+                    'endColumnIndex': 10,      # columns A-J
+                }],
+                'booleanRule': {
+                    'condition': {
+                        'type': 'CUSTOM_FORMULA',
+                        'values': [{'userEnteredValue': '=$E2="FAILED"'}],
+                    },
+                    'format': {
+                        'backgroundColor': {
+                            'red': 1.0,
+                            'green': 0.8,
+                            'blue': 0.8,
+                        },
+                        'textFormat': {'bold': True},
+                    },
+                },
+            },
+            'index': 0,
+        }
+    }
+
+    service.spreadsheets().batchUpdate(
+        spreadsheetId=sheet_id,
+        body={'requests': [rule]},
+    ).execute()

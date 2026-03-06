@@ -64,6 +64,11 @@ def create_drive_folders(client_name):
         folder_id = drive_client.create_folder(folder_name, root_id)
         folder_ids[config_key] = folder_id
 
+    # OPS-01: Create _FAILED subfolder inside 02-PROCESSING
+    log.info("  Creating subfolder: 02-PROCESSING/_FAILED")
+    failed_id = drive_client.create_folder('_FAILED', folder_ids['processing'])
+    folder_ids['failed'] = failed_id
+
     return folder_ids
 
 
@@ -114,6 +119,14 @@ def create_tracking_sheet(client_name):
         sheet_name='Tracking',
         headers=sheets_client.TRACKING_HEADERS,
     )
+
+    # OPS-01: Add conditional formatting so FAILED rows are visually obvious
+    try:
+        sheets_client.add_failed_row_formatting(sheet_id)
+        log.info("Added FAILED row conditional formatting")
+    except Exception as e:
+        log.warning(f"Could not add FAILED formatting (non-fatal): {e}")
+
     return sheet_id
 
 

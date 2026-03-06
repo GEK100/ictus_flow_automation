@@ -1,0 +1,52 @@
+# Ictus Flow System — Python Dependencies
+# Install: pip install -r requirements.txt
+
+# === Core: Claude API ===
+anthropic>=0.84.0
+
+# === Google APIs (Drive, Sheets) ===
+google-api-python-client>=2.100.0
+google-auth>=2.20.0
+google-auth-httplib2>=0.1.0
+google-auth-oauthlib>=1.0.0
+
+# === Email (notifications via Resend) ===
+resend>=2.0.0
+
+# === Document Processing ===
+python-docx>=1.0.0           # Word document read/write
+openpyxl>=3.1.0              # Excel spreadsheet read/write
+xlsxwriter>=3.0.0            # Excel writing (alternative)
+PyPDF2>=3.0.0                # PDF reading/manipulation
+pdfplumber>=0.10.0           # PDF table/text extraction
+pdfminer.six>=20221105       # PDF text extraction
+reportlab>=4.0.0             # PDF generation (OCR overlay)
+pdf2image>=1.16.0            # PDF to image conversion (Skill 7)
+python-pptx>=0.6.21          # PowerPoint reading
+
+# === OCR & Image Processing (Skill 7) ===
+pytesseract>=0.3.10          # OCR engine wrapper
+Pillow>=10.0.0               # Image manipulation
+opencv-python-headless>=4.8.0  # Image processing (de-skew, contrast)
+
+# === Data & Validation ===
+pandas>=2.0.0                # Data analysis / table handling
+pydantic>=2.0.0              # JSON schema validation
+numpy>=1.24.0                # Numerical operations
+
+# === General Utilities ===
+python-dotenv>=1.0.0         # .env file loading
+requests>=2.31.0             # HTTP requests
+Jinja2>=3.1.0                # Template rendering
+tabulate>=0.9.0              # CLI table formatting
+PyYAML>=6.0                  # YAML parsing
+beautifulsoup4>=4.12.0       # HTML parsing
+lxml>=4.9.0                  # XML/HTML parsing (camelot dependency)
+
+# === PDF Table Extraction ===
+camelot-py[cv]>=0.11.0       # PDF table extraction
+tabula-py>=2.8.0             # PDF table extraction (Java-based)
+
+# === Windows-compatible extras ===
+colorama>=0.4.0              # Colored terminal output on Windows
+python-magic-bin>=0.4.14     # File type detection (Windows binary)

@@ -1,0 +1,38 @@
+[
+  [
+    "File Name",
+    "Date Received",
+    "Classification",
+    "Confidence",
+    "Status",
+    "Workflow",
+    "QA Score",
+    "QA Status",
+    "Notes",
+    "Completed Date"
+  ],
+  [
+    "invoice_001.pdf",
+    "15/01/2025",
+    "INVOICE",
+    "0.95",
+    "COMPLETED",
+    "invoice-processor",
+    "85",
+    "PASS",
+    "CORRECTION: Supplier name should be \"Acme Building Supplies Ltd\" not \"Acme Building\"",
+    ""
+  ],
+  [
+    "letter_001.docx",
+    "16/01/2025",
+    "LETTER",
+    "0.90",
+    "COMPLETED",
+    "letter-drafter",
+    "90",
+    "PASS",
+    "Looks good",
+    ""
+  ]
+]

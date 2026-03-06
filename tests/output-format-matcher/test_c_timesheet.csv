@@ -1,0 +1,4 @@
+Date,Employee,Project,Hours,Rate,Total,Approved
+15/01/2025,John Smith,PRJ-101,8,25.00,200.00,Yes
+16/01/2025,John Smith,PRJ-101,7.5,25.00,187.50,Yes
+17/01/2025,Jane Doe,PRJ-102,8,30.00,240.00,No

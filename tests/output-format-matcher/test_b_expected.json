@@ -1,0 +1,7 @@
+{
+  "type": "document",
+  "expected_has_header": true,
+  "expected_has_footer": true,
+  "expected_orientation": "portrait",
+  "expected_margins_present": true
+}

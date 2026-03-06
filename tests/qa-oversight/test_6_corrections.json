@@ -1,0 +1,11 @@
+[
+  {
+    "id": "corr-001",
+    "workflow": "invoice-processor",
+    "category": "factual_error",
+    "field": "supplier",
+    "original_value": "ACME Building Supplies",
+    "corrected_value": "Acme Building Supplies Ltd",
+    "cause": "Dropped Ltd suffix from supplier name"
+  }
+]

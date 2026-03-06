@@ -1,0 +1,7 @@
+{
+  "changes_expected": 2,
+  "fields": [
+    "vat_amount",
+    "gross_amount"
+  ]
+}

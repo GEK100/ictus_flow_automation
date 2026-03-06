@@ -1,0 +1,19 @@
+{
+  "type": "spreadsheet",
+  "expected_columns": [
+    "Date",
+    "Employee",
+    "Project",
+    "Hours",
+    "Rate",
+    "Total",
+    "Approved"
+  ],
+  "expected_column_count": 7,
+  "expected_types": {
+    "Date": "date",
+    "Hours": "number",
+    "Rate": "number",
+    "Total": "number"
+  }
+}

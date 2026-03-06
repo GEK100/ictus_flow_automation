@@ -1,0 +1,28 @@
+{
+  "type": "spreadsheet",
+  "expected_columns": [
+    "Date",
+    "Invoice No",
+    "Supplier",
+    "Description",
+    "Net Amount",
+    "VAT Rate",
+    "VAT Amount",
+    "Gross Amount",
+    "Category",
+    "Project",
+    "Payment Due",
+    "Paid Date",
+    "Status",
+    "Notes"
+  ],
+  "expected_column_count": 14,
+  "expected_types": {
+    "Date": "date",
+    "Net Amount": "currency",
+    "VAT Rate": "number",
+    "Status": "text"
+  },
+  "expected_conditional_formatting": true,
+  "expected_frozen_panes": true
+}

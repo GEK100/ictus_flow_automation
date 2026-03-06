@@ -1,0 +1,17 @@
+{
+  "name": "ictus-flow-system",
+  "version": "1.0.0",
+  "description": "Ictus Flow automated document processing system",
+  "scripts": {},
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "docx": "^9.6.0",
+    "pptxgenjs": "^4.0.1"
+  }
+}

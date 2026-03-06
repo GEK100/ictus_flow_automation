@@ -1,0 +1,78 @@
+{
+  "classification_map": {
+    "INVOICE": {
+      "handler": "invoice_handler",
+      "processing_tier": "MODEL_STANDARD",
+      "prompt": "invoice-processor.txt"
+    },
+    "LETTER": {
+      "handler": "letter_handler",
+      "processing_tier": "MODEL_STANDARD",
+      "prompt": "letter-drafter.txt"
+    },
+    "CONTRACT": {
+      "handler": "contract_handler",
+      "processing_tier": "MODEL_COMPLEX",
+      "prompt": "contract-reviewer.txt"
+    },
+    "TENDER": {
+      "handler": "tender_handler",
+      "processing_tier": "MODEL_COMPLEX",
+      "prompt": "tender-compiler.txt"
+    },
+    "RAMS": {
+      "handler": "rams_handler",
+      "processing_tier": "MODEL_COMPLEX",
+      "prompt": "rams-generator.txt"
+    },
+    "CIS": {
+      "handler": "cis_handler",
+      "processing_tier": "MODEL_STANDARD",
+      "prompt": "cis-processor.txt"
+    },
+    "PAYMENT_CERT": {
+      "handler": "payment_cert_handler",
+      "processing_tier": "MODEL_COMPLEX",
+      "prompt": "payment-cert.txt"
+    },
+    "CREDIT_CONTROL": {
+      "handler": "credit_control_handler",
+      "processing_tier": "MODEL_STANDARD",
+      "prompt": "credit-control.txt"
+    },
+    "QUOTE": {
+      "handler": "quote_handler",
+      "processing_tier": "MODEL_STANDARD",
+      "prompt": "quote-generator.txt"
+    },
+    "BLOG": {
+      "handler": "blog_handler",
+      "processing_tier": "MODEL_STANDARD",
+      "prompt": "blog-writer.txt"
+    },
+    "PROGRESS_REPORT": {
+      "handler": "progress_report_handler",
+      "processing_tier": "MODEL_STANDARD",
+      "prompt": "progress-report.txt"
+    },
+    "COMPLIANCE": {
+      "handler": "compliance_handler",
+      "processing_tier": "MODEL_STANDARD",
+      "prompt": "compliance-tracker.txt"
+    },
+    "OTHER": {
+      "handler": null,
+      "processing_tier": null,
+      "prompt": null,
+      "action": "HOLD_FOR_MANUAL_CLASSIFICATION"
+    }
+  },
+  "confidence_thresholds": {
+    "auto_route": 0.90,
+    "spot_check": 0.70,
+    "hold": 0.00
+  },
+  "never_graduate_qa": [
+    "RAMS", "CONTRACT", "TENDER", "PAYMENT_CERT"
+  ]
+}

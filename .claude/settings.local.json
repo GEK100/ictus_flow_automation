@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install)",
+      "Bash(pip install -r requirements.txt)",
+      "Bash(python -c \"import anthropic, google.auth, resend, docx, openpyxl, pdfplumber, pytesseract, cv2, pandas, pydantic, dotenv; print\\(''All core imports OK''\\)\")",
+      "Bash(python -c \":*)",
+      "Bash(python tests/output-format-matcher/create_fixtures.py)",
+      "Bash(python -m pytest tests/output-format-matcher/test_output_format_matcher.py -v)",
+      "Bash(pip install pytest -q)",
+      "Bash(python tests/qa-oversight/create_fixtures.py)",
+      "Bash(python -m pytest tests/qa-oversight/test_qa_oversight.py -v)",
+      "Bash(pip install pytesseract -q)",
+      "Bash(python -c \"import pytesseract; pytesseract.pytesseract.tesseract_cmd = r''C:\\\\Program Files\\\\Tesseract-OCR\\\\tesseract.exe''; print\\(pytesseract.get_tesseract_version\\(\\)\\)\")",
+      "Bash(python tests/correction-logger/create_fixtures.py)",
+      "Bash(python -m pytest tests/correction-logger/test_correction_logger.py -v)",
+      "Bash(python scripts/skills/ocr_preprocessor.py \"tests/ocr-preprocessor/Ictus_Flow_Skills_Intelligence_Layer.docx\")",
+      "Bash(python scripts/skills/ocr_preprocessor.py \"tests/ocr-preprocessor/Invoice-II9KF33L-0003.pdf\" --output-dir \"tests/ocr-preprocessor/_output\")",
+      "Bash(python scripts/skills/ocr_preprocessor.py \"tests/ocr-preprocessor/5500615226.pdf\" --output-dir \"tests/ocr-preprocessor/_output\")",
+      "Bash(python scripts/skills/ocr_preprocessor.py \"tests/ocr-preprocessor/Invoice-WRQVXH5T-0003.pdf\" --output-dir \"tests/ocr-preprocessor/_output\")",
+      "Bash(python scripts/skills/ocr_preprocessor.py \"tests/ocr-preprocessor/5476594222.pdf\" --output-dir \"tests/ocr-preprocessor/_output\")",
+      "Bash(python scripts/skills/ocr_preprocessor.py \"tests/ocr-preprocessor/Invoice-KUFSGU-00005.pdf\" --output-dir \"tests/ocr-preprocessor/_output\")",
+      "Bash(python scripts/skills/ocr_preprocessor.py \"tests/ocr-preprocessor/20260306_193705.jpg\" --output-dir \"tests/ocr-preprocessor/_output\")",
+      "Bash(test -f \"C:/Users/gk100/Ictus Flow Automation/ictus-flow-system/.env.example\")",
+      "Bash(git init)",
+      "Bash(git config --global --add safe.directory 'C:/Users/gk100/Ictus Flow Automation/ictus-flow-system')",
+      "Bash(git add config/clients/)",
+      "Bash(git add .)"
+    ]
+  }
+}

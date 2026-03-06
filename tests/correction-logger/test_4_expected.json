@@ -1,0 +1,8 @@
+{
+  "changes_expected": 3,
+  "fields": [
+    "supplier",
+    "date",
+    "amount"
+  ]
+}

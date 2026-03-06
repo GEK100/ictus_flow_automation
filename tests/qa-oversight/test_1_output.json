@@ -1,0 +1,13 @@
+{
+  "invoice_number": "INV-2025-0042",
+  "date": "15/01/2025",
+  "supplier": "Acme Building Supplies Ltd",
+  "client": "Gilmartins Property Maintenance",
+  "description": "500 red bricks @ \u00a30.80 each",
+  "net_amount": 400.0,
+  "vat_rate": 0.2,
+  "vat_amount": 80.0,
+  "gross_amount": 480.0,
+  "payment_terms": "30 days",
+  "due_date": "14/02/2025"
+}

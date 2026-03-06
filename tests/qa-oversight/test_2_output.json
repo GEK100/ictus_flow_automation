@@ -1,0 +1,7 @@
+{
+  "invoice_number": "INV-2025-0043",
+  "net_amount": 1000.0,
+  "vat_rate": 0.2,
+  "vat_amount": 150.0,
+  "gross_amount": 1200.0
+}

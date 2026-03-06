@@ -1,0 +1,24 @@
+# Secrets (stored outside project at C:\Users\gk100\Ictus Flow Automation Secrets\)
+.env
+service-account.json
+
+# Dependencies
+node_modules/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Client configs (contain folder IDs and emails)
+config/clients/*.json
+!config/clients/_template.json
+
+# Test outputs
+tests/ocr-preprocessor/_output/
+tests/**/benchmark-results/
+
+# OS
+Thumbs.db
+.DS_Store

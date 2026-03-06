@@ -1,0 +1,7 @@
+{
+  "expected_overall": "FAIL",
+  "expected_problem_dimensions": [
+    "factual_accuracy"
+  ],
+  "note": "Known correction pattern repeated"
+}

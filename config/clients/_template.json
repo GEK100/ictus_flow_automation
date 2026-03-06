@@ -1,0 +1,32 @@
+{
+  "client_name": "TEMPLATE — DO NOT EDIT",
+  "client_code": "XXXX",
+  "contact_name": "",
+  "contact_email": "",
+  "intake_email": "clientname@ictusflow.com",
+  "folders": {
+    "root": "DRIVE_FOLDER_ID",
+    "inbox": "DRIVE_FOLDER_ID",
+    "processing": "DRIVE_FOLDER_ID",
+    "completed": "DRIVE_FOLDER_ID",
+    "archive": "DRIVE_FOLDER_ID",
+    "brand_assets": "DRIVE_FOLDER_ID",
+    "templates": "DRIVE_FOLDER_ID",
+    "learning": "DRIVE_FOLDER_ID"
+  },
+  "active_workflows": ["invoice_processing"],
+  "tracking_sheet_id": "GOOGLE_SHEET_ID",
+  "brand": {
+    "profile_generated": false,
+    "primary_color": "",
+    "secondary_color": "",
+    "font": ""
+  },
+  "tone": {
+    "profile_generated": false,
+    "formality": null
+  },
+  "qa": {
+    "graduated_workflows": []
+  }
+}

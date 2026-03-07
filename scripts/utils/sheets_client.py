@@ -4,6 +4,7 @@ import os
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from dotenv import load_dotenv
+from scripts.utils.retry import retry_with_backoff
 
 load_dotenv(r"C:\Users\gk100\Ictus Flow Automation Secrets\.env")
 
@@ -25,6 +26,7 @@ def _get_service():
     return _service
 
 
+@retry_with_backoff()
 def read_sheet(sheet_id, range_name='Sheet1!A:Z'):
     """Read all values from a sheet range. Returns list of rows."""
     service = _get_service()
@@ -34,6 +36,7 @@ def read_sheet(sheet_id, range_name='Sheet1!A:Z'):
     return result.get('values', [])
 
 
+@retry_with_backoff()
 def append_row(sheet_id, row_data, range_name='Tracking!A:Z'):
     """Append a single row to the sheet."""
     service = _get_service()
@@ -45,6 +48,7 @@ def append_row(sheet_id, row_data, range_name='Tracking!A:Z'):
     ).execute()
 
 
+@retry_with_backoff()
 def update_cell(sheet_id, cell_range, value):
     """Update a single cell or range.
 
@@ -81,6 +85,7 @@ def update_row_field(sheet_id, row_number, column_index, value,
     update_cell(sheet_id, cell_range, value)
 
 
+@retry_with_backoff()
 def create_spreadsheet(title, sheet_name='Tracking', headers=None):
     """Create a new Google Sheet. Returns the spreadsheet ID."""
     service = _get_service()
@@ -100,9 +105,11 @@ def create_spreadsheet(title, sheet_name='Tracking', headers=None):
 TRACKING_HEADERS = [
     'File Name', 'Date Received', 'Classification', 'Confidence',
     'Status', 'Workflow', 'QA Score', 'QA Status', 'Notes', 'Completed Date',
+    'Client Review', 'Client Notes',
 ]
 
 
+@retry_with_backoff()
 def add_failed_row_formatting(sheet_id, sheet_name='Tracking'):
     """Add conditional formatting: rows where Status (col E) = 'FAILED' get red background.
 
@@ -125,7 +132,7 @@ def add_failed_row_formatting(sheet_id, sheet_name='Tracking'):
                     'sheetId': sheet_gid,
                     'startRowIndex': 1,       # skip header row
                     'startColumnIndex': 0,
-                    'endColumnIndex': 10,      # columns A-J
+                    'endColumnIndex': 12,      # columns A-L
                 }],
                 'booleanRule': {
                     'condition': {
@@ -150,3 +157,140 @@ def add_failed_row_formatting(sheet_id, sheet_name='Tracking'):
         spreadsheetId=sheet_id,
         body={'requests': [rule]},
     ).execute()
+
+
+# Column index for Client Review (K = index 10)
+COL_CLIENT_REVIEW = 10
+COL_CLIENT_NOTES = 11
+
+REVIEW_VALUES = ['Correct', 'Wrong', 'Needs Review', '']
+
+
+@retry_with_backoff()
+def add_review_dropdown(sheet_id, sheet_name='Tracking'):
+    """Apply data validation dropdown to column K (Client Review).
+
+    Restricts values to: Correct, Wrong, Needs Review, or blank.
+    Applied from row 2 onwards (skipping header).
+    """
+    service = _get_service()
+
+    meta = service.spreadsheets().get(
+        spreadsheetId=sheet_id, fields='sheets.properties'
+    ).execute()
+    sheet_gid = meta['sheets'][0]['properties']['sheetId']
+
+    request = {
+        'setDataValidation': {
+            'range': {
+                'sheetId': sheet_gid,
+                'startRowIndex': 1,
+                'startColumnIndex': COL_CLIENT_REVIEW,
+                'endColumnIndex': COL_CLIENT_REVIEW + 1,
+            },
+            'rule': {
+                'condition': {
+                    'type': 'ONE_OF_LIST',
+                    'values': [{'userEnteredValue': v} for v in REVIEW_VALUES],
+                },
+                'showCustomUi': True,
+                'strict': True,
+            },
+        }
+    }
+
+    service.spreadsheets().batchUpdate(
+        spreadsheetId=sheet_id,
+        body={'requests': [request]},
+    ).execute()
+
+
+@retry_with_backoff()
+def add_review_conditional_formatting(sheet_id, sheet_name='Tracking'):
+    """Add conditional formatting for Client Review column.
+
+    - 'Wrong' rows get orange background
+    - 'Needs Review' rows get yellow background
+    """
+    service = _get_service()
+
+    meta = service.spreadsheets().get(
+        spreadsheetId=sheet_id, fields='sheets.properties'
+    ).execute()
+    sheet_gid = meta['sheets'][0]['properties']['sheetId']
+
+    range_def = {
+        'sheetId': sheet_gid,
+        'startRowIndex': 1,
+        'startColumnIndex': 0,
+        'endColumnIndex': 12,
+    }
+
+    wrong_rule = {
+        'addConditionalFormatRule': {
+            'rule': {
+                'ranges': [range_def],
+                'booleanRule': {
+                    'condition': {
+                        'type': 'CUSTOM_FORMULA',
+                        'values': [{'userEnteredValue': '=$K2="Wrong"'}],
+                    },
+                    'format': {
+                        'backgroundColor': {
+                            'red': 1.0,
+                            'green': 0.6,
+                            'blue': 0.0,
+                        },
+                    },
+                },
+            },
+            'index': 0,
+        }
+    }
+
+    needs_review_rule = {
+        'addConditionalFormatRule': {
+            'rule': {
+                'ranges': [range_def],
+                'booleanRule': {
+                    'condition': {
+                        'type': 'CUSTOM_FORMULA',
+                        'values': [{'userEnteredValue': '=$K2="Needs Review"'}],
+                    },
+                    'format': {
+                        'backgroundColor': {
+                            'red': 1.0,
+                            'green': 1.0,
+                            'blue': 0.0,
+                        },
+                    },
+                },
+            },
+            'index': 1,
+        }
+    }
+
+    service.spreadsheets().batchUpdate(
+        spreadsheetId=sheet_id,
+        body={'requests': [wrong_rule, needs_review_rule]},
+    ).execute()
+
+
+def get_flagged_rows(sheet_id, range_name='Tracking!A:L'):
+    """Return all rows where Client Review (col K) is 'Wrong' or 'Needs Review'.
+
+    Returns list of dicts with keys: row_number, row_data.
+    row_number is 1-indexed (matching sheet row numbers).
+    """
+    rows = read_sheet(sheet_id, range_name)
+    if not rows or len(rows) < 2:
+        return []
+
+    flagged = []
+    for i, row in enumerate(rows[1:], start=2):
+        if len(row) > COL_CLIENT_REVIEW:
+            review_val = row[COL_CLIENT_REVIEW].strip()
+            if review_val in ('Wrong', 'Needs Review'):
+                flagged.append({'row_number': i, 'row_data': row})
+
+    return flagged

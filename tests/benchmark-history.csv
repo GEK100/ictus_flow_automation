@@ -1,1 +1,1 @@
-date,skill,test_case,expected,actual,pass,notes
+date,skill_name,test_case,expected,actual,pass_fail,duration_ms,notes

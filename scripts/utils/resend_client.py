@@ -3,6 +3,7 @@
 import os
 import resend
 from dotenv import load_dotenv
+from scripts.utils.retry import retry_with_backoff
 
 load_dotenv(r"C:\Users\gk100\Ictus Flow Automation Secrets\.env")
 
@@ -11,6 +12,7 @@ resend.api_key = os.getenv('RESEND_API_KEY')
 FROM_ADDRESS = 'Ictus Flow <hello@ictusflow.com>'
 
 
+@retry_with_backoff()
 def send_email(to, subject, html_body, attachments=None):
     """Send an email via Resend.
 

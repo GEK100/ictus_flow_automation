@@ -32,6 +32,16 @@ from scripts.skills.ocr_preprocessor import (
 )
 
 
+# CX-06: Supported file types and their categories
+SUPPORTED_TYPES = {
+    '.pdf': 'document',
+    '.jpg': 'image', '.jpeg': 'image', '.png': 'image',
+    '.docx': 'office', '.doc': 'office',
+    '.xlsx': 'spreadsheet', '.xls': 'spreadsheet', '.csv': 'spreadsheet',
+    '.msg': 'email', '.eml': 'email',
+}
+
+
 def load_routing_rules():
     """Load classification config from routing-rules.json."""
     path = PROJECT_ROOT / 'config' / 'workflows' / 'routing-rules.json'
@@ -107,6 +117,41 @@ def classify_file(
         drive_client.download_file(file_id, local_path)
     elif local_path:
         filename = filename or os.path.basename(local_path)
+
+    # CX-06: Check for unsupported file types
+    ext = Path(filename).suffix.lower() if filename else ''
+    if ext and ext not in SUPPORTED_TYPES:
+        log.warning(f"Unsupported file type: {ext}")
+        unsupported_result = {
+            'classification': 'UNSUPPORTED',
+            'confidence': 0.0,
+            'status': 'NEEDS_CLASSIFICATION',
+            'summary': f'Unsupported file type: {ext}',
+            'suggested_workflow': None,
+            'ocr_applied': False,
+        }
+        # Log to tracking sheet
+        if config and config.get('tracking_sheet_id'):
+            try:
+                from datetime import datetime
+                sheets_client.append_row(
+                    config['tracking_sheet_id'],
+                    [
+                        filename,
+                        datetime.now().strftime('%Y-%m-%d %H:%M'),
+                        'UNSUPPORTED',
+                        '0.00',
+                        'NEEDS_CLASSIFICATION',
+                        '',
+                        '', '', f'Unsupported file type: {ext}', '',
+                        '', '',
+                    ],
+                )
+            except Exception as e:
+                log.warning(f"Could not update tracking sheet: {e}")
+        if tmpdir:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+        return unsupported_result
 
     try:
         # Load base classifier prompt
@@ -184,6 +229,8 @@ def classify_file(
                         '',  # QA Status
                         f"OCR: {ocr_applied}" if ocr_applied else '',
                         '',  # Completed Date
+                        '',  # Client Review
+                        '',  # Client Notes
                     ],
                 )
             except Exception as e:
@@ -267,6 +314,43 @@ def _extract_text_content(filepath):
             for row in ws.iter_rows(max_row=20, values_only=True):
                 rows.append(' | '.join(str(c) for c in row if c))
             return '\n'.join(rows)[:3000]
+        except Exception:
+            return ''
+
+    elif ext == '.eml':
+        try:
+            import email
+            with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+                msg = email.message_from_file(f)
+            subject = msg.get('Subject', '')
+            body = ''
+            if msg.is_multipart():
+                for part in msg.walk():
+                    if part.get_content_type() == 'text/plain':
+                        body = part.get_payload(decode=True).decode('utf-8', errors='ignore')
+                        break
+            else:
+                body = msg.get_payload(decode=True).decode('utf-8', errors='ignore')
+            return f"Subject: {subject}\n\n{body}"[:3000]
+        except Exception:
+            return ''
+
+    elif ext == '.msg':
+        try:
+            import extract_msg
+            msg = extract_msg.Message(filepath)
+            subject = msg.subject or ''
+            body = msg.body or ''
+            msg.close()
+            return f"Subject: {subject}\n\n{body}"[:3000]
+        except ImportError:
+            # extract-msg not installed, try reading as binary text
+            try:
+                with open(filepath, 'rb') as f:
+                    raw = f.read(5000).decode('utf-8', errors='ignore')
+                return raw[:3000]
+            except Exception:
+                return ''
         except Exception:
             return ''
 

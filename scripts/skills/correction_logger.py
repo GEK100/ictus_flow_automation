@@ -40,6 +40,8 @@ COL_FILE_NAME = 0
 COL_STATUS = 4
 COL_WORKFLOW = 5
 COL_NOTES = 8
+COL_CLIENT_REVIEW = 10
+COL_CLIENT_NOTES = 11
 
 # Valid correction categories
 CATEGORIES = [
@@ -385,7 +387,7 @@ def run_manual_notes(client_code):
         return []
 
     # Read tracking sheet
-    rows = sheets_client.read_sheet(sheet_id, 'Tracking!A:J')
+    rows = sheets_client.read_sheet(sheet_id, 'Tracking!A:L')
     if not rows or len(rows) < 2:
         log.info("Tracking sheet empty or header-only")
         return []
@@ -431,6 +433,10 @@ def run_manual_notes(client_code):
         except Exception as e:
             log.warning(f"Could not mark row {row_idx} as logged: {e}")
 
+    # CX-04: Also process rows flagged via Client Review column
+    flagged_corrections = _process_flagged_rows(client_code, sheet_id)
+    all_new_corrections.extend(flagged_corrections)
+
     if not all_new_corrections:
         log.info("No new correction notes found")
         return []
@@ -444,6 +450,52 @@ def run_manual_notes(client_code):
     _print_corrections_summary(all_new_corrections, 'manual notes')
 
     return all_new_corrections
+
+
+def _process_flagged_rows(client_code, sheet_id):
+    """CX-04: Process rows flagged via Client Review dropdown.
+
+    Picks up rows where Client Review is 'Wrong' or 'Needs Review',
+    sends Client Notes to Sonnet for categorisation, and updates
+    the review status to 'Logged'.
+    """
+    flagged = sheets_client.get_flagged_rows(sheet_id)
+    if not flagged:
+        return []
+
+    all_corrections = []
+    for entry in flagged:
+        row = entry['row_data']
+        row_num = entry['row_number']
+
+        file_name = row[COL_FILE_NAME] if len(row) > COL_FILE_NAME else 'unknown'
+        workflow = row[COL_WORKFLOW] if len(row) > COL_WORKFLOW else 'unknown'
+        client_notes = row[COL_CLIENT_NOTES].strip() if len(row) > COL_CLIENT_NOTES else ''
+
+        if not client_notes:
+            log.info(f"Row {row_num} flagged but no Client Notes — skipping")
+            continue
+
+        log.info(f"Processing flagged row {row_num} for {file_name}: {client_notes[:60]}...")
+
+        new_corrections = categorise_changes(
+            client_notes, workflow, client_code
+        )
+
+        for corr in new_corrections:
+            corr['source'] = 'client-flag'
+
+        all_corrections.extend(new_corrections)
+
+        # Mark as processed: set Client Review to 'Logged'
+        try:
+            sheets_client.update_row_field(
+                sheet_id, row_num, COL_CLIENT_REVIEW, 'Logged'
+            )
+        except Exception as e:
+            log.warning(f"Could not update row {row_num} to Logged: {e}")
+
+    return all_corrections
 
 
 def _get_workflow_from_sheet(client_code, file_name):

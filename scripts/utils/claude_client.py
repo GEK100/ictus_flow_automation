@@ -15,6 +15,7 @@ import json
 import base64
 from anthropic import Anthropic
 from dotenv import load_dotenv
+from scripts.utils.retry import retry_with_backoff
 
 load_dotenv(r"C:\Users\gk100\Ictus Flow Automation Secrets\.env")
 
@@ -47,6 +48,7 @@ def get_model(tier):
     return MODEL_TIERS.get(tier, tier)
 
 
+@retry_with_backoff()
 def send_message(
     prompt,
     system_prompt=None,

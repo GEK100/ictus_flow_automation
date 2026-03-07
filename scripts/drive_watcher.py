@@ -11,6 +11,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from utils.cost_logger import log_api_call
 from scripts.utils.client_guard import validate_client_operation
 from scripts.utils import drive_client, sheets_client, resend_client, credit_monitor
+from scripts.utils.value_tracker import log_value as log_file_value
+from scripts.utils.storage_factory import get_storage_client
 
 load_dotenv(r"C:\Users\gk100\Ictus Flow Automation Secrets\.env")
 anthropic = Anthropic()
@@ -183,6 +185,9 @@ def run():
             inbox_id = client['folders']['inbox']
             processing_id = client['folders']['processing']
 
+            # SCA-05: Obtain platform-aware storage client for this client
+            storage = get_storage_client(client)
+
             # SEC-02: Validate client boundary before processing
             validate_client_operation(client_code, inbox_id)
             validate_client_operation(client_code, processing_id)
@@ -220,6 +225,22 @@ def run():
                     # Move to PROCESSING
                     move_file(file['id'],
                               inbox_id, processing_id)
+
+                    # COM-01: Log value delivered
+                    try:
+                        from utils.cost_logger import estimate_cost
+                        model = os.getenv('MODEL_CLASSIFIER', '')
+                        api_cost = estimate_cost(
+                            model,
+                            response.usage.input_tokens if 'response' in dir() else 0,
+                            response.usage.output_tokens if 'response' in dir() else 0,
+                        ) if model else 0.0
+                        log_file_value(
+                            client_code, file['name'],
+                            result['classification'], api_cost,
+                        )
+                    except Exception as val_err:
+                        print(f"  WARNING: Could not log value: {val_err}")
 
                     print(f"  -> {result['classification']}"
                           f" ({result['confidence']})")

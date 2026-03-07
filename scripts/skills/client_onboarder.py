@@ -127,6 +127,19 @@ def create_tracking_sheet(client_name):
     except Exception as e:
         log.warning(f"Could not add FAILED formatting (non-fatal): {e}")
 
+    # CX-04: Add Client Review dropdown and conditional formatting
+    try:
+        sheets_client.add_review_dropdown(sheet_id)
+        log.info("Added Client Review dropdown to column K")
+    except Exception as e:
+        log.warning(f"Could not add review dropdown (non-fatal): {e}")
+
+    try:
+        sheets_client.add_review_conditional_formatting(sheet_id)
+        log.info("Added Client Review conditional formatting")
+    except Exception as e:
+        log.warning(f"Could not add review formatting (non-fatal): {e}")
+
     return sheet_id
 
 
@@ -157,6 +170,7 @@ def write_client_config(
         'qa': {
             'graduated_workflows': [],
         },
+        'prompt_overrides': {},
     }
 
     config_path = PROJECT_ROOT / 'config' / 'clients' / f'{client_code.lower()}.json'

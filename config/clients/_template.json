@@ -4,6 +4,7 @@
   "contact_name": "",
   "contact_email": "",
   "intake_email": "clientname@ictusflow.com",
+  "platform": "google",
   "folders": {
     "root": "DRIVE_FOLDER_ID",
     "inbox": "DRIVE_FOLDER_ID",
@@ -29,5 +30,6 @@
   },
   "qa": {
     "graduated_workflows": []
-  }
+  },
+  "prompt_overrides": {}
 }

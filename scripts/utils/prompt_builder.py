@@ -1,7 +1,11 @@
-"""4-layer prompt assembly for Ictus Flow.
+"""5-layer prompt assembly for Ictus Flow.
 
 Layers:
-  1. Base prompt from prompts/[workflow].txt
+  0. (Optional) Client-specific base prompt override from
+     prompts/client_overrides/[filename]. Configured via prompt_overrides
+     in the client config. Replaces Layer 1 when present.
+  1. Default base prompt from prompts/[workflow].txt
+     (skipped if Layer 0 exists)
   2. Industry corrections from learning/industry/[vertical]/corrections.json
   3. Client corrections from client's 07-LEARNING/corrections.json on Drive
   4. Brand + tone from client's brand-profile.json and tone-profile.json
@@ -25,6 +29,41 @@ def load_base_prompt(prompt_filename):
     path = os.path.join(PROJECT_ROOT, 'prompts', prompt_filename)
     if not os.path.exists(path):
         raise FileNotFoundError(f"Base prompt not found: {path}")
+    with open(path, 'r', encoding='utf-8') as f:
+        return f.read().strip()
+
+
+def load_client_override_prompt(client_code, workflow_name):
+    """Layer 0: Load client-specific base prompt override.
+
+    Checks the client config for prompt_overrides[workflow_name].
+    If found, loads the override file from prompts/client_overrides/.
+
+    Args:
+        client_code: Client code (e.g. 'GILM').
+        workflow_name: Workflow name (e.g. 'invoice-processor').
+
+    Returns:
+        Override prompt string, or None if no override configured.
+
+    Raises:
+        FileNotFoundError: If the override file is referenced but missing.
+    """
+    config = load_client_config(client_code)
+    if not config:
+        return None
+
+    overrides = config.get('prompt_overrides', {})
+    if not overrides or workflow_name not in overrides:
+        return None
+
+    override_filename = overrides[workflow_name]
+    path = os.path.join(PROJECT_ROOT, 'prompts', 'client_overrides', override_filename)
+    if not os.path.exists(path):
+        raise FileNotFoundError(
+            f"Client prompt override not found: {path} "
+            f"(referenced by {client_code} for workflow '{workflow_name}')"
+        )
     with open(path, 'r', encoding='utf-8') as f:
         return f.read().strip()
 
@@ -155,20 +194,28 @@ def build_prompt(
     industry='construction',
     include_brand_tone=None,
 ):
-    """Assemble a full 4-layer prompt.
+    """Assemble a full 5-layer prompt.
 
     Args:
         prompt_filename: Base prompt file (e.g. 'invoice-processor.txt').
-        client_code: Client code for layers 3-4 (e.g. 'GILM'). None = layers 1-2 only.
-        workflow: Workflow name for filtering corrections.
+        client_code: Client code for layers 0, 3-4 (e.g. 'GILM'). None = layers 1-2 only.
+        workflow: Workflow name for filtering corrections and Layer 0 lookup.
         industry: Industry vertical for layer 2 corrections.
         include_brand_tone: Include brand/tone (layer 4). None = auto-detect.
 
     Returns:
         Assembled prompt string.
     """
-    # Layer 1: Base
-    prompt = load_base_prompt(prompt_filename)
+    # Layer 0: Client-specific base prompt override (replaces Layer 1 if present)
+    override = None
+    if client_code and workflow:
+        override = load_client_override_prompt(client_code, workflow)
+
+    # Layer 1: Default base (skipped if Layer 0 exists)
+    if override is not None:
+        prompt = override
+    else:
+        prompt = load_base_prompt(prompt_filename)
 
     # Layer 2: Industry corrections
     industry_corrections = load_industry_corrections(industry)
